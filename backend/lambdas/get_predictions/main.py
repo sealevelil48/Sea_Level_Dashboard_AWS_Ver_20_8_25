@@ -196,7 +196,7 @@ def arima_predict(station: str, steps: int = 240) -> Optional[List[float]]:
         
         # Resample to hourly
         df = df.set_index('Tab_DateTime')
-        hourly_data = df['Tab_Value_mDepthC1'].resample('h').mean().fillna(method='ffill')
+        hourly_data = df['Tab_Value_mDepthC1'].resample('h').mean().ffill()
         
         # Fit ARIMA model
         model = ARIMA(hourly_data, order=(5, 1, 0))
@@ -332,7 +332,9 @@ def handler(event, context):
     try:
         # Parse parameters
         params = event.get('queryStringParameters') or {}
-        logger.info(f"Received params: {params}")
+        # Sanitize params for logging
+        safe_params = {k: str(v)[:100] for k, v in params.items() if isinstance(v, (str, int, float))}
+        logger.info(f"Received params: {safe_params}")
         
         stations_param = params.get('stations') or params.get('station')
         models = [m.strip().lower() for m in params.get('model', 'kalman').split(',')]

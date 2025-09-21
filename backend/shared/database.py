@@ -28,7 +28,12 @@ if not DB_URI:
 # Create SQLAlchemy engine only if DB_URI is available
 engine = None
 if DB_URI:
-    print(f"Connecting to database: {DB_URI[:50]}...")
+    # Log database connection without exposing credentials
+    if DB_URI:
+        db_type = DB_URI.split('://')[0] if '://' in DB_URI else 'unknown'
+        print(f"Connecting to {db_type} database...")
+    else:
+        print("No database URI configured")
     try:
         from sqlalchemy.pool import QueuePool
         engine = create_engine(

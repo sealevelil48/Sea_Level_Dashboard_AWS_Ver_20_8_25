@@ -99,10 +99,14 @@ frontend_assets_path = project_root / "frontend" / "public" / "assets"
 if frontend_assets_path.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_assets_path)), name="assets")
 
-# Global variables for server management
-frontend_process = None
-frontend_thread = None
-auto_start_frontend = False
+# Server state management class to avoid global variables
+class ServerState:
+    def __init__(self):
+        self.frontend_process = None
+        self.frontend_thread = None
+        self.auto_start_frontend = False
+
+server_state = ServerState()
 
 def lambda_response_to_fastapi(lambda_response):
     """Convert Lambda response format to FastAPI response"""
@@ -152,11 +156,13 @@ def find_npm_executable():
                 capture_output=True, 
                 text=True,
                 timeout=10,
-                shell=True  # This is key for Windows
+                shell=False,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
             if result.returncode == 0:
                 return cmd
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to check npm command {cmd}: {e}")
             continue
     
     # Try with full paths
@@ -174,7 +180,8 @@ def find_npm_executable():
                     capture_output=True, 
                     text=True,
                     timeout=10,
-                    shell=True
+                    shell=False,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
                 )
                 if result.returncode == 0:
                     return path
@@ -348,9 +355,13 @@ def start_frontend_server():
             return True
         else:
             logger.error("❌ React development server failed to start")
-            if frontend_process.stderr:
-                stderr_output = frontend_process.stderr.read()
-                logger.error(f"Error output: {stderr_output}")
+            if server_state.frontend_process.stderr:
+                try:
+                    stdout, stderr = server_state.frontend_process.communicate(timeout=5)
+                    if stderr:
+                        logger.error(f"Error output: {stderr}")
+                except subprocess.TimeoutExpired:
+                    logger.error("Process communication timeout")
             return False
             
     except Exception as e:
@@ -382,7 +393,7 @@ async def root():
     return {
         "message": "Sea Level Monitoring API",
         "status": "running",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now().astimezone().isoformat(),
         "version": "1.0.0",
         "lambda_handlers": LAMBDA_HANDLERS_AVAILABLE,
         "lambda_errors": lambda_import_errors if lambda_import_errors else None,
@@ -413,10 +424,10 @@ async def health_check():
     
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now().astimezone().isoformat(),
         "database": db_status,
         "lambda_handlers": LAMBDA_HANDLERS_AVAILABLE,
-        "frontend": frontend_process is not None and frontend_process.poll() is None,
+        "frontend": server_state.frontend_process is not None and server_state.frontend_process.poll() is None,
         "node_available": find_node_executable() is not None,
         "npm_available": find_npm_executable() is not None
     }
@@ -597,7 +608,22 @@ async def get_sea_forecast():
 @app.get("/assets/{filename}")
 async def get_asset(filename: str):
     """Serve static assets like icons"""
-    asset_path = project_root / "frontend" / "public" / "assets" / filename
+    # Sanitize filename to prevent path traversal
+    safe_filename = filename.replace('..', '').replace('/', '').replace('\\', '')
+    if not safe_filename or safe_filename != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    asset_path = project_root / "frontend" / "public" / "assets" / safe_filename
+    
+    # Ensure path is within assets directory
+    try:
+        asset_path = asset_path.resolve()
+        assets_dir = (project_root / "frontend" / "public" / "assets").resolve()
+        if not str(asset_path).startswith(str(assets_dir)):
+            raise HTTPException(status_code=403, detail="Access denied")
+    except:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
     if asset_path.exists():
         return FileResponse(asset_path)
     else:

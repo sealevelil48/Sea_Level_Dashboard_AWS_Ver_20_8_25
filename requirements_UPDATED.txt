@@ -1,0 +1,57 @@
+# Updated requirements.txt with security fixes
+# Core FastAPI and web framework
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+starlette>=0.27.0
+
+# Database and ORM
+sqlalchemy>=2.0.23
+psycopg2-binary>=2.9.9
+alembic>=1.13.0
+
+# Data processing and analysis
+pandas>=2.1.4
+numpy>=1.24.4
+scipy>=1.11.4
+scikit-learn>=1.5.0  # Updated to fix vulnerability
+statsmodels>=0.14.0
+
+# HTTP and API clients
+requests>=2.31.0
+httpx>=0.25.2
+aiohttp>=3.9.1
+
+# Caching and performance
+redis>=5.0.1
+python-multipart>=0.0.7  # Updated to fix ReDoS vulnerability
+
+# Security and validation
+pydantic>=2.5.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bleach>=6.1.0  # For HTML sanitization
+
+# Environment and configuration
+python-dotenv>=1.0.0
+pydantic-settings>=2.1.0
+
+# Date and time handling
+python-dateutil>=2.8.2
+pytz>=2023.3
+
+# Logging and monitoring
+structlog>=23.2.0
+python-json-logger>=2.0.7
+
+# Development and testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+pytest-cov>=4.1.0
+httpx>=0.25.2  # For testing
+
+# Optional: Enhanced features
+# Uncomment if needed
+# celery>=5.3.4  # For background tasks
+# flower>=2.0.1  # Celery monitoring
+# prometheus-client>=0.19.0  # Metrics
+# sentry-sdk[fastapi]>=1.38.0  # Error tracking

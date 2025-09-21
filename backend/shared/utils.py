@@ -3,8 +3,11 @@ import re
 from datetime import datetime
 
 def generate_export_filename(station, start_date, end_date, extension="png"):
+    import html
     station = station or "AllStations"
-    sanitized_station = re.sub(r'[^\w\-]', '', station)
+    # Escape HTML and sanitize for filename
+    sanitized_station = html.escape(str(station))
+    sanitized_station = re.sub(r'[^\w\-]', '', sanitized_station)
 
     def format_date(date_str):
         if not date_str:

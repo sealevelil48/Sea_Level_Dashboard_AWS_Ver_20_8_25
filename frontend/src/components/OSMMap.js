@@ -213,6 +213,14 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
     fetchStationMapData();
   }, [mapInstanceRef.current]);
 
+  // Helper function to escape HTML to prevent XSS
+  const escapeHtml = (text) => {
+    if (typeof text !== 'string') return String(text || '');
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
   // Function to update markers with station data
   const updateMarkersWithData = (stationMapData) => {
     Object.entries(markersRef.current).forEach(([station, marker]) => {
@@ -226,17 +234,17 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
       // Add sea level data first
       if (stationData) {
         popupContent += `
-            <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${station}</h4>
-            <p><strong>Sea Level:</strong> ${stationData.latest_value} m</p>
-            <p><strong>Temperature:</strong> ${stationData.temperature || 'N/A'}°C</p>
-            <p><strong>Last Update:</strong> ${stationData.last_update}</p>
+            <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${escapeHtml(station)}</h4>
+            <p><strong>Sea Level:</strong> ${escapeHtml(stationData.latest_value)} m</p>
+            <p><strong>Temperature:</strong> ${escapeHtml(stationData.temperature || 'N/A')}°C</p>
+            <p><strong>Last Update:</strong> ${escapeHtml(stationData.last_update)}</p>
             <p style="font-size: 11px; color: #888;">
             <a href="https://www.gov.il/he/departments/survey_of_israel/govil-landing-page" target="_blank" rel="noopener noreferrer" style="color: #666; text-decoration: none;">© 2025 Survey of Israel. All rights reserved.</a>
           </p>
         `;
       } else {
         popupContent += `
-            <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${station}</h4>
+            <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${escapeHtml(station)}</h4>
             <p>Loading sea level data...</p>
         `;
       }
@@ -246,11 +254,11 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         const currentForecast = forecastLocation.forecasts[0];
         popupContent += `
             <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
-            <h4 style="margin: 0 0 10px 0; color: #ff8c00;">${forecastLocation.name_eng}</h4>
-            <p><strong>Wave Height:</strong> ${currentForecast?.elements?.wave_height || 'N/A'}</p>
-            <p><strong>Sea Temperature:</strong> ${currentForecast?.elements?.sea_temperature || 'N/A'}°C</p>
-            <p><strong>Wind:</strong> ${currentForecast?.elements?.wind || 'N/A'}</p>
-            <p><strong>Forecast Period:</strong><br/>${currentForecast?.from || 'N/A'} - ${currentForecast?.to || 'N/A'}</p>
+            <h4 style="margin: 0 0 10px 0; color: #ff8c00;">${escapeHtml(forecastLocation.name_eng)}</h4>
+            <p><strong>Wave Height:</strong> ${escapeHtml(currentForecast?.elements?.wave_height || 'N/A')}</p>
+            <p><strong>Sea Temperature:</strong> ${escapeHtml(currentForecast?.elements?.sea_temperature || 'N/A')}°C</p>
+            <p><strong>Wind:</strong> ${escapeHtml(currentForecast?.elements?.wind || 'N/A')}</p>
+            <p><strong>Forecast Period:</strong><br/>${escapeHtml(currentForecast?.from || 'N/A')} - ${escapeHtml(currentForecast?.to || 'N/A')}</p>
             <p style="font-size: 11px; color: #888;">
               <a href="https://ims.gov.il/he/coasts" target="_blank" rel="noopener noreferrer" style="color: #666; text-decoration: none;">IMS Forecast ©</a>
             </p>
@@ -284,11 +292,11 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         if (forecastLocation && stationToForecastMapping[station]) {
           const currentForecast = forecastLocation.forecasts[0];
           popupContent += `
-              <h4 style="margin: 0 0 10px 0; color: #ff8c00;">${forecastLocation.name_eng}</h4>
-              <p><strong>Wave Height:</strong> ${currentForecast?.elements?.wave_height || 'N/A'}</p>
-              <p><strong>Sea Temperature:</strong> ${currentForecast?.elements?.sea_temperature || 'N/A'}°C</p>
-              <p><strong>Wind:</strong> ${currentForecast?.elements?.wind || 'N/A'}</p>
-              <p><strong>Forecast Period:</strong><br/>${currentForecast?.from || 'N/A'} - ${currentForecast?.to || 'N/A'}</p>
+              <h4 style="margin: 0 0 10px 0; color: #ff8c00;">${escapeHtml(forecastLocation.name_eng)}</h4>
+              <p><strong>Wave Height:</strong> ${escapeHtml(currentForecast?.elements?.wave_height || 'N/A')}</p>
+              <p><strong>Sea Temperature:</strong> ${escapeHtml(currentForecast?.elements?.sea_temperature || 'N/A')}°C</p>
+              <p><strong>Wind:</strong> ${escapeHtml(currentForecast?.elements?.wind || 'N/A')}</p>
+              <p><strong>Forecast Period:</strong><br/>${escapeHtml(currentForecast?.from || 'N/A')} - ${escapeHtml(currentForecast?.to || 'N/A')}</p>
               <p style="font-size: 11px; color: #888;">
                 <a href="https://ims.gov.il/he/coasts" target="_blank" rel="noopener noreferrer" style="color: #666; text-decoration: none;">IMS Forecast ©</a>
               </p>
@@ -299,17 +307,17 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         // Add sea level data
         if (latestData) {
           popupContent += `
-              <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${station}</h4>
-              <p><strong>Sea Level:</strong> ${latestData.Tab_Value_mDepthC1?.toFixed(3) || 'N/A'} m</p>
-              <p><strong>Temperature:</strong> ${latestData.Tab_Value_monT2m?.toFixed(1) || 'N/A'}°C</p>
-              <p><strong>Last Update:</strong> ${latestData.Tab_DateTime ? new Date(latestData.Tab_DateTime).toISOString().replace('T', ' ').replace('.000Z', '') : 'N/A'}</p>
+              <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${escapeHtml(station)}</h4>
+              <p><strong>Sea Level:</strong> ${escapeHtml(latestData.Tab_Value_mDepthC1?.toFixed(3) || 'N/A')} m</p>
+              <p><strong>Temperature:</strong> ${escapeHtml(latestData.Tab_Value_monT2m?.toFixed(1) || 'N/A')}°C</p>
+              <p><strong>Last Update:</strong> ${escapeHtml(latestData.Tab_DateTime ? new Date(latestData.Tab_DateTime).toISOString().replace('T', ' ').replace('.000Z', '') : 'N/A')}</p>
               <p style="font-size: 11px; color: #888;">
               <a href="https://www.gov.il/he/departments/survey_of_israel/govil-landing-page" target="_blank" rel="noopener noreferrer" style="color: #666; text-decoration: none;">© 2025 Survey of Israel. All rights reserved.</a>
             </p>
           `;
         } else {
           popupContent += `
-              <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${station}</h4>
+              <h4 style="margin: 0 0 10px 0; color: #1e6bc4;">${escapeHtml(station)}</h4>
               <p>Loading sea level data...</p>
           `;
         }
