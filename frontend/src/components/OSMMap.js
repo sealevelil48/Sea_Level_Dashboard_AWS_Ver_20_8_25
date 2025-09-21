@@ -11,7 +11,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
 });
 
-const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
+const OSMMap = ({ mapData, forecastData }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({});
@@ -69,7 +69,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
 
     const initMap = () => {
       try {
-        console.log('Initializing OSM map...');
+        // Initializing OSM map
         mapInstanceRef.current = L.map(mapRef.current, {
           center: [31.5, 34.8],
           zoom: 7,
@@ -81,7 +81,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
           maxZoom: 18
         }).addTo(mapInstanceRef.current);
         
-        console.log('OSM map initialized successfully');
+        // OSM map initialized successfully
 
         // Add station markers
         Object.entries(stationCoordinates).forEach(([station, coords]) => {
@@ -94,14 +94,14 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         // Center map properly after everything loads
         setTimeout(() => {
           if (mapInstanceRef.current) {
-            console.log('Resizing map and fitting bounds');
+            // Resizing map and fitting bounds
             mapInstanceRef.current.invalidateSize();
             const allMarkers = Object.values(markersRef.current).filter(m => m);
             if (allMarkers.length > 0) {
               const group = new L.featureGroup(allMarkers);
               mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
             }
-            console.log('Map setup complete');
+            // Map setup complete
             
             // Mark initialization complete
             if (mapRef.current) {
@@ -112,7 +112,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
             if (forecastData?.locations) {
               const seaOfGalilee = forecastData.locations.find(loc => loc.name_eng === 'Sea of Galilee');
               if (seaOfGalilee && !markersRef.current['forecast_sea_of_galilee']) {
-                console.log('Adding Sea of Galilee marker after map setup');
+                // Adding Sea of Galilee marker after map setup
                 const coords = [seaOfGalilee.coordinates.lat, seaOfGalilee.coordinates.lng];
                 const marker = L.marker(coords).addTo(mapInstanceRef.current);
                 
@@ -139,7 +139,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         }, 300);
         
       } catch (error) {
-        console.error('Map initialization error:', error);
+        // Map initialization error
       }
     };
 
@@ -157,7 +157,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         try {
           mapInstanceRef.current.removeLayer(markersRef.current['forecast_sea_of_galilee']);
         } catch (e) {
-          console.warn('Error removing Sea of Galilee marker:', e);
+          // Error removing Sea of Galilee marker
         }
         delete markersRef.current['forecast_sea_of_galilee'];
       }
@@ -206,7 +206,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
           updateMarkersWithData(stationMapData);
         }
       } catch (error) {
-        console.warn('Failed to fetch station map data for OSM:', error);
+        // Failed to fetch station map data for OSM
       }
     };
     
@@ -275,7 +275,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
     const timer = setTimeout(() => {
       if (!mapInstanceRef.current || !mapData?.length) return;
 
-      console.log('Popup update: mapData length:', mapData?.length, 'forecast locations:', forecastData?.locations?.length);
+      // Popup update: mapData and forecast data
 
       Object.entries(markersRef.current).forEach(([station, marker]) => {
         if (!marker || station.startsWith('forecast_')) return;
@@ -284,7 +284,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
         const latestData = stationData.length > 0 ? stationData[stationData.length - 1] : null;
         const forecastLocation = getForecastForStation(station);
         
-        console.log(`Station ${station}: data=${!!latestData}, forecast=${!!forecastLocation}`);
+        // Station data and forecast status
         
         let popupContent = '<div style="font-family: Arial, sans-serif; min-width: 200px;">';
         
@@ -348,7 +348,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
                 mapInstanceRef.current.removeLayer(marker);
               }
             } catch (e) {
-              console.warn('Error removing marker during cleanup:', e);
+              // Error removing marker during cleanup
             }
           });
           markersRef.current = {};
@@ -356,7 +356,7 @@ const OSMMap = ({ stations, currentStation, mapData, forecastData }) => {
           // Remove map
           mapInstanceRef.current.remove();
         } catch (e) {
-          console.warn('Map cleanup warning:', e);
+          // Map cleanup warning
         }
         mapInstanceRef.current = null;
         setIsVisible(false);

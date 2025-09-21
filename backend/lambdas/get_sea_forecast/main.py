@@ -246,4 +246,19 @@ def map_location_name(original_name):
     return name_mapping.get(original_name, original_name)
 
 def get_location_coordinates(location_name):
-    # Input validation already exists - function is secure
+    """Get coordinates for location names"""
+    # Input validation - sanitize location name
+    if not isinstance(location_name, str):
+        return {"lat": 0, "lng": 0}
+    
+    location_name = location_name.strip()
+    
+    coordinates = {
+        "Northern Coast": {"lat": 32.8, "lng": 35.0},
+        "Central Coast": {"lat": 32.0, "lng": 34.8},
+        "Southern Coast": {"lat": 31.4, "lng": 34.3},
+        "Sea of Galilee": {"lat": 32.8, "lng": 35.6},
+        "Gulf of Eilat": {"lat": 29.5, "lng": 34.9}
+    }
+    
+    return coordinates.get(location_name, {"lat": 32.0, "lng": 34.8})
