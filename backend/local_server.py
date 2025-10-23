@@ -652,6 +652,77 @@ async def get_warnings():
             'error': str(e)
         }
 
+@app.get("/mariners-forecast")
+async def get_mariners_forecast():
+    """Get IMS Mariners forecast from XML"""
+    try:
+        import xml.etree.ElementTree as ET
+        import requests
+        from datetime import datetime
+        
+        # Fetch XML
+        response = requests.get(
+            "https://ims.gov.il/sites/default/files/ims_data/xml_files/medit_sea.xml",
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        # Parse XML
+        root = ET.fromstring(response.content)
+        
+        # Extract metadata
+        metadata = {
+            'title': root.find('.//Title').text if root.find('.//Title') is not None else 'Mariners Forecast',
+            'organization': root.find('.//Organization').text if root.find('.//Organization') is not None else 'IMS',
+            'issue_datetime': root.find('.//IssueDateTime').text if root.find('.//IssueDateTime') is not None else ''
+        }
+        
+        # Extract locations
+        locations = []
+        for location in root.findall('.//Location'):
+            location_meta = location.find('LocationMetaData')
+            location_data = location.find('LocationData')
+            
+            if location_meta is not None:
+                loc_info = {
+                    'id': location_meta.find('LocationId').text if location_meta.find('LocationId') is not None else '',
+                    'name_eng': location_meta.find('LocationNameEng').text if location_meta.find('LocationNameEng') is not None else '',
+                    'name_heb': location_meta.find('LocationNameHeb').text if location_meta.find('LocationNameHeb') is not None else '',
+                    'forecasts': []
+                }
+                
+                if location_data is not None:
+                    for time_unit in location_data.findall('TimeUnitData'):
+                        forecast = {
+                            'from': time_unit.find('DateTimeFrom').text if time_unit.find('DateTimeFrom') is not None else '',
+                            'to': time_unit.find('DateTimeTo').text if time_unit.find('DateTimeTo') is not None else '',
+                            'elements': {}
+                        }
+                        
+                        for element in time_unit.findall('Element'):
+                            name = element.find('ElementName')
+                            value = element.find('ElementValue')
+                            if name is not None and value is not None:
+                                forecast['elements'][name.text] = value.text or ''
+                        
+                        loc_info['forecasts'].append(forecast)
+                
+                locations.append(loc_info)
+        
+        return {
+            'metadata': metadata,
+            'locations': locations,
+            'fetched_at': datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching mariners forecast: {e}")
+        return {
+            'metadata': {},
+            'locations': [],
+            'error': str(e)
+        }
+
 @app.get("/assets/{filename}")
 async def get_asset(filename: str):
     """Serve static assets like icons"""
@@ -690,6 +761,17 @@ async def get_mapframe(end_date: str = None):
         return HTMLResponse(content=html_content)
     else:
         raise HTTPException(status_code=404, detail="Mapframe HTML not found")
+
+@app.get("/mariners-mapframe")
+async def get_mariners_mapframe():
+    """Serve Mariners forecast map iframe"""
+    mapframe_path = current_dir / "mariners_mapframe.html"
+    if mapframe_path.exists():
+        with open(mapframe_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    else:
+        raise HTTPException(status_code=404, detail="Mariners mapframe HTML not found")
 
 # Frontend management endpoints
 @app.post("/dev/frontend/start")

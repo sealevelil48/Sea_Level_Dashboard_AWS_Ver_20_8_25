@@ -16,6 +16,7 @@ import apiService from '../services/apiService';
 // Lazy load heavy components
 const OSMMap = lazy(() => import('./OSMMap'));
 const SeaForecastView = lazy(() => import('./SeaForecastView'));
+const MarinersForecastView = lazy(() => import('./MarinersForecastView'));
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://sea-level-dash-local:8001';
 
@@ -1401,6 +1402,12 @@ function Dashboard() {
                   <Tab eventKey="forecast" title="Waves Forecast">
                     <Suspense fallback={<Spinner animation="border" />}>
                       <SeaForecastView apiBaseUrl={API_BASE_URL} />
+                    </Suspense>
+                  </Tab>
+                  
+                  <Tab eventKey="mariners" title="Mariners Forecast">
+                    <Suspense fallback={<Spinner animation="border" />}>
+                      <MarinersForecastView apiBaseUrl={API_BASE_URL} />
                     </Suspense>
                   </Tab>
                 </Tabs>

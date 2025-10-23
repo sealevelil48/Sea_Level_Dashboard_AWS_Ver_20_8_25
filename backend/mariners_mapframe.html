@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mariners Forecast Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100vw; }
+        .forecast-popup {
+            min-width: 200px;
+            font-size: 12px;
+        }
+        .forecast-popup h4 {
+            margin: 0 0 10px 0;
+            color: #2c5aa0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .forecast-item {
+            margin-bottom: 8px;
+            padding: 5px;
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+        .forecast-period {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 3px;
+        }
+        .forecast-element {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        .element-name {
+            font-weight: 500;
+            color: #6c757d;
+        }
+        .element-value {
+            color: #212529;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map centered on Mediterranean
+        const map = L.map('map').setView([33.0, 34.0], 7);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Location coordinates for the three forecast areas
+        const locationCoords = {
+            'Delta': [31.5, 34.5],
+            'SouthEast Kritiko': [34.5, 26.0], 
+            'Crusade': [34.0, 33.0]
+        };
+        
+        // Fetch mariners forecast data
+        async function fetchMarinersData() {
+            try {
+                const response = await fetch('/mariners-forecast');
+                const data = await response.json();
+                
+                if (data.locations) {
+                    data.locations.forEach(location => {
+                        const coords = locationCoords[location.name_eng];
+                        if (coords) {
+                            addLocationMarker(location, coords);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching mariners data:', error);
+            }
+        }
+        
+        function addLocationMarker(location, coords) {
+            // Create popup content
+            let popupContent = `<div class="forecast-popup">
+                <h4>${location.name_eng}</h4>
+                <div style="color: #6c757d; margin-bottom: 10px;">${location.name_heb}</div>`;
+            
+            location.forecasts.forEach((forecast, idx) => {
+                const fromDate = new Date(forecast.from).toLocaleString('en-IL', {
+                    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                });
+                const toDate = new Date(forecast.to).toLocaleString('en-IL', {
+                    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                });
+                
+                popupContent += `<div class="forecast-item">
+                    <div class="forecast-period">${fromDate} - ${toDate}</div>`;
+                
+                // Add forecast elements
+                Object.entries(forecast.elements).forEach(([name, value]) => {
+                    if (value && value.trim()) {
+                        popupContent += `<div class="forecast-element">
+                            <span class="element-name">${name}:</span>
+                            <span class="element-value">${value}</span>
+                        </div>`;
+                    }
+                });
+                
+                popupContent += '</div>';
+            });
+            
+            popupContent += '</div>';
+            
+            // Create marker with custom icon
+            const marker = L.marker(coords, {
+                icon: L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="
+                        background: #2c5aa0;
+                        color: white;
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        font-size: 12px;
+                        border: 2px solid white;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    ">⚓</div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map);
+            
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'mariners-popup'
+            });
+        }
+        
+        // Load data when page loads
+        fetchMarinersData();
+        
+        // Refresh data every 30 minutes
+        setInterval(fetchMarinersData, 30 * 60 * 1000);
+    </script>
+</body>
+</html>
