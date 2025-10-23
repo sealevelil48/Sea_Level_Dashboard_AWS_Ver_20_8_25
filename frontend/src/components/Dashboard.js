@@ -820,6 +820,14 @@ function Dashboard() {
   };
 
   const exportTable = () => {
+    // Check if we're on mariners forecast tab
+    if (activeTab === 'mariners') {
+      // Trigger mariners forecast export
+      const marinersExportEvent = new CustomEvent('exportMarinersTable');
+      window.dispatchEvent(marinersExportEvent);
+      return;
+    }
+
     if (tableData.length === 0) {
       alert('No data to export');
       return;

@@ -64,6 +64,15 @@ const MarinersForecastView = ({ apiBaseUrl }) => {
     return () => clearInterval(interval);
   }, [fetchForecastData]);
 
+  useEffect(() => {
+    const handleExportEvent = () => {
+      exportTable();
+    };
+    
+    window.addEventListener('exportMarinersTable', handleExportEvent);
+    return () => window.removeEventListener('exportMarinersTable', handleExportEvent);
+  }, [forecastData]);
+
   const formatDateTime = (dateTimeStr) => {
     return new Date(dateTimeStr).toLocaleString('en-IL', {
       year: 'numeric',
@@ -72,6 +81,38 @@ const MarinersForecastView = ({ apiBaseUrl }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const exportTable = () => {
+    if (!forecastData?.locations) return;
+    
+    const csvData = [];
+    csvData.push(['Location', 'Period From', 'Period To', 'Pressure (hPa)', 'Sea Status & Waves', 'Wind', 'Visibility (NM)', 'Weather', 'Swell']);
+    
+    forecastData.locations.forEach(location => {
+      location.forecasts.forEach(forecast => {
+        csvData.push([
+          `${location.name_eng} (${location.name_heb})`,
+          formatDateTime(forecast.from),
+          formatDateTime(forecast.to),
+          forecast.elements['Pressure'] || 'N/A',
+          forecast.elements['Sea status and waves height'] ? translateSeaStatus(forecast.elements['Sea status and waves height']) : 'N/A',
+          forecast.elements['Wind direction and speed'] ? translateWind(forecast.elements['Wind direction and speed']) : 'N/A',
+          forecast.elements['Visibility'] || 'N/A',
+          forecast.elements['Weather code'] ? translateWeatherCode(forecast.elements['Weather code']) : 'N/A',
+          forecast.elements['Swell'] || 'N/A'
+        ]);
+      });
+    });
+    
+    const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mariners_forecast_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const getElementBadgeColor = (elementName, value) => {
