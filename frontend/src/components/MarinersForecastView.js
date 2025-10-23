@@ -1,11 +1,44 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Row, Col, Badge, Spinner, Button, Tabs, Tab, Table } from 'react-bootstrap';
+// Simple translation functions
+const translateWind = (windStr) => {
+  if (!windStr) return windStr;
+  const parts = windStr.split('/');
+  if (parts.length !== 2) return windStr;
+  const directions = {'045': 'NE', '135': 'SE', '225': 'SW', '315': 'NW', '180': 'S', '000': 'N', '090': 'E', '270': 'W'};
+  const dirPart = parts[0].trim();
+  let dirText = dirPart;
+  if (dirPart.includes('-')) {
+    const [start, end] = dirPart.split('-');
+    dirText = `${directions[start] || start}-${directions[end] || end}`;
+  } else {
+    dirText = directions[dirPart] || dirPart;
+  }
+  return `${dirText} (${parts[1].trim()} km/h)`;
+};
+
+const translateWeatherCode = (code) => {
+  const codes = {'1220': 'Partly Cloudy', '1250': 'Mostly Cloudy', '1000': 'Clear', '4001': 'Rain', '8000': 'Thunderstorm'};
+  return codes[code] || code;
+};
+
+const translateSeaStatus = (seaStr) => {
+  if (!seaStr) return seaStr;
+  const parts = seaStr.split(' / ');
+  if (parts.length !== 2) return seaStr;
+  const code = parts[0].trim();
+  const height = parts[1].trim();
+  const seaCodes = {'10': 'Calm', '20': 'Smooth', '30': 'Slight', '40': 'Light', '50': 'Slight', '60': 'Moderate', '70': 'Rough', '80': 'Very Rough', '90': 'High', '95': 'Very High'};
+  const description = seaCodes[code] || code;
+  return `${description} (${height} cm)`;
+};
 
 const MarinersForecastView = ({ apiBaseUrl }) => {
   const [forecastData, setForecastData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('table');
+  const [iframeCreated, setIframeCreated] = useState(false);
 
   const fetchForecastData = useCallback(async () => {
     try {
@@ -119,10 +152,10 @@ const MarinersForecastView = ({ apiBaseUrl }) => {
                   </small>
                 </td>
                 <td>{forecast.elements['Pressure'] || 'N/A'}</td>
-                <td>{forecast.elements['Sea status and waves height'] || 'N/A'}</td>
-                <td>{forecast.elements['Wind direction and speed'] || 'N/A'}</td>
+                <td>{forecast.elements['Sea status and waves height'] ? translateSeaStatus(forecast.elements['Sea status and waves height']) : 'N/A'}</td>
+                <td>{forecast.elements['Wind direction and speed'] ? translateWind(forecast.elements['Wind direction and speed']) : 'N/A'}</td>
                 <td>{forecast.elements['Visibility'] || 'N/A'}</td>
-                <td>{forecast.elements['Weather code'] || 'N/A'}</td>
+                <td>{forecast.elements['Weather code'] ? translateWeatherCode(forecast.elements['Weather code']) : 'N/A'}</td>
                 <td>{forecast.elements['Swell'] || 'N/A'}</td>
               </tr>
             ))
@@ -132,17 +165,7 @@ const MarinersForecastView = ({ apiBaseUrl }) => {
     </div>
   );
 
-  const MapView = () => (
-    <div style={{ width: '100%', height: 'clamp(400px, 60vh, 600px)', border: '1px solid #2a4a8c', borderRadius: '8px', overflow: 'hidden' }}>
-      <iframe
-        src={`${apiBaseUrl}/mariners-mapframe`}
-        style={{ width: '100%', height: '100%', border: 'none' }}
-        title="Mariners Forecast Map"
-        allow="geolocation; accelerometer; clipboard-write"
-        sandbox="allow-scripts allow-same-origin allow-forms"
-      />
-    </div>
-  );
+
 
   return (
     <div>
@@ -172,12 +195,26 @@ const MarinersForecastView = ({ apiBaseUrl }) => {
       </Card>
 
       {/* Tabs */}
-      <Tabs activeKey={activeTab} onSelect={setActiveTab} className="mb-3">
+      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
         <Tab eventKey="table" title="Table View">
-          <TableView />
+          {activeTab === 'table' && <TableView />}
         </Tab>
         <Tab eventKey="map" title="Map View">
-          <MapView />
+          <div style={{ width: '100%', height: 'clamp(400px, 60vh, 600px)', border: '1px solid #2a4a8c', borderRadius: '8px', overflow: 'hidden' }}>
+            {!iframeCreated && activeTab === 'map' && (() => {
+              setIframeCreated(true);
+              return null;
+            })()}
+            {iframeCreated && (
+              <iframe
+                src={`${apiBaseUrl}/mariners-mapframe`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Mariners Forecast Map"
+                allow="geolocation; accelerometer; clipboard-write"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+              />
+            )}
+          </div>
         </Tab>
       </Tabs>
 

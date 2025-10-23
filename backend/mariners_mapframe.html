@@ -48,6 +48,55 @@
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // Translation functions
+        const WIND_DIRECTION_CODES = {
+            '000': 'N', '045': 'NE', '090': 'E', '135': 'SE',
+            '180': 'S', '225': 'SW', '270': 'W', '315': 'NW', '360': 'N'
+        };
+        
+        const WEATHER_CODES = {
+            '1000': 'Clear', '1100': 'Mostly Clear', '1200': 'Partly Cloudy',
+            '1220': 'Partly Cloudy', '1250': 'Mostly Cloudy', '1300': 'Cloudy',
+            '2000': 'Fog', '4001': 'Rain', '5000': 'Snow', '8000': 'Thunderstorm'
+        };
+        
+        function translateWind(windStr) {
+            if (!windStr) return windStr;
+            const parts = windStr.split('/');
+            if (parts.length !== 2) return windStr;
+            
+            const directionPart = parts[0].trim();
+            const speedPart = parts[1].trim();
+            
+            let directionText = directionPart;
+            if (directionPart.includes('-')) {
+                const [start, end] = directionPart.split('-');
+                const startDir = WIND_DIRECTION_CODES[start] || start;
+                const endDir = WIND_DIRECTION_CODES[end] || end;
+                directionText = `${startDir}-${endDir}`;
+            } else {
+                directionText = WIND_DIRECTION_CODES[directionPart] || directionPart;
+            }
+            
+            return `${directionText} (${speedPart} km/h)`;
+        }
+        
+        function translateWeatherCode(weatherCode) {
+            if (!weatherCode) return weatherCode;
+            return WEATHER_CODES[weatherCode] || weatherCode;
+        }
+        
+        function translateSeaStatus(seaStr) {
+            if (!seaStr) return seaStr;
+            const parts = seaStr.split(' / ');
+            if (parts.length !== 2) return seaStr;
+            const code = parts[0].trim();
+            const height = parts[1].trim();
+            const seaCodes = {'10': 'Calm', '20': 'Smooth', '30': 'Slight', '40': 'Light', '50': 'Slight', '60': 'Moderate', '70': 'Rough', '80': 'Very Rough', '90': 'High', '95': 'Very High'};
+            const description = seaCodes[code] || code;
+            return `${description} (${height} cm)`;
+        }
+        
         // Initialize map centered on Mediterranean
         const map = L.map('map').setView([33.0, 34.0], 7);
         
@@ -99,12 +148,23 @@
                 popupContent += `<div class="forecast-item">
                     <div class="forecast-period">${fromDate} - ${toDate}</div>`;
                 
-                // Add forecast elements
+                // Add forecast elements with translations
                 Object.entries(forecast.elements).forEach(([name, value]) => {
                     if (value && value.trim()) {
+                        let displayValue = value;
+                        
+                        // Apply translations
+                        if (name === 'Wind direction and speed') {
+                            displayValue = translateWind(value);
+                        } else if (name === 'Weather code') {
+                            displayValue = translateWeatherCode(value);
+                        } else if (name === 'Sea status and waves height') {
+                            displayValue = translateSeaStatus(value);
+                        }
+                        
                         popupContent += `<div class="forecast-element">
                             <span class="element-name">${name}:</span>
-                            <span class="element-value">${value}</span>
+                            <span class="element-value">${displayValue}</span>
                         </div>`;
                     }
                 });
@@ -146,8 +206,8 @@
         // Load data when page loads
         fetchMarinersData();
         
-        // Refresh data every 30 minutes
-        setInterval(fetchMarinersData, 30 * 60 * 1000);
+        // Don't auto-refresh to prevent iframe reloading
+        // setInterval(fetchMarinersData, 30 * 60 * 1000);
     </script>
 </body>
 </html>

@@ -104,6 +104,42 @@ export function getWindSpeedColor(windStr) {
   return 'secondary';                      // Grey - No significant weather
 }
 
+// Weather code translations
+const WEATHER_CODES = {
+  '1000': 'Clear',
+  '1100': 'Mostly Clear',
+  '1200': 'Partly Cloudy',
+  '1220': 'Partly Cloudy',
+  '1250': 'Mostly Cloudy',
+  '1300': 'Cloudy',
+  '2000': 'Fog',
+  '2100': 'Light Fog',
+  '4000': 'Drizzle',
+  '4001': 'Rain',
+  '4200': 'Light Rain',
+  '4201': 'Heavy Rain',
+  '5000': 'Snow',
+  '5001': 'Flurries',
+  '5100': 'Light Snow',
+  '5101': 'Heavy Snow',
+  '6000': 'Freezing Drizzle',
+  '6001': 'Freezing Rain',
+  '6200': 'Light Freezing Rain',
+  '6201': 'Heavy Freezing Rain',
+  '7000': 'Ice Pellets',
+  '7101': 'Heavy Ice Pellets',
+  '7102': 'Light Ice Pellets',
+  '8000': 'Thunderstorm'
+};
+
+/**
+ * Translate weather code
+ */
+export function translateWeatherCode(weatherCode) {
+  if (!weatherCode || typeof weatherCode !== 'string') return weatherCode;
+  return WEATHER_CODES[weatherCode] || weatherCode;
+}
+
 /**
  * Get Bootstrap variant for weather risk colors
  */
