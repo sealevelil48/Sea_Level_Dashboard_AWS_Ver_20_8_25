@@ -15,12 +15,12 @@ class ApiError extends Error {
 class ApiService {
   constructor(baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000') {
     this.baseURL = baseURL;
-    this.timeout = 30000;
+    this.timeout = 60000; // 60 seconds for predictions
     this.activeRequests = new Map();
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
-    this.retryAttempts = 3;
-    this.retryDelay = 1000;
+    this.retryAttempts = 2; // Reduce retries
+    this.retryDelay = 2000;
   }
 
   // Cache management
@@ -61,9 +61,12 @@ class ApiService {
       }
     }
     
-    // Cancel previous request if exists
+    // Cancel previous request if exists (except for GET requests)
     if (this.activeRequests.has(requestId)) {
-      this.activeRequests.get(requestId).abort();
+      const method = options.method || 'GET';
+      if (method !== 'GET') {
+        this.activeRequests.get(requestId).abort();
+      }
     }
 
     const controller = new AbortController();
@@ -111,7 +114,7 @@ class ApiService {
         
         if (error.name === 'AbortError') {
           this.activeRequests.delete(requestId);
-          throw new Error('Request cancelled');
+          throw new Error('Request timeout - server may be processing');
         }
         
         // Don't retry on client errors (4xx)
@@ -133,14 +136,25 @@ class ApiService {
 
   async getStations() {
     try {
-      const data = await this.request('/stations');
-      return {
-        stations: Array.isArray(data.stations) ? data.stations : [],
-        database_available: data.database_available || false
-      };
+      // Use shorter timeout for stations on initial load
+      const originalTimeout = this.timeout;
+      this.timeout = 8000; // 8 seconds
+      
+      try {
+        const data = await this.request('/stations');
+        return {
+          stations: Array.isArray(data.stations) ? data.stations : [],
+          database_available: data.database_available || false
+        };
+      } finally {
+        this.timeout = originalTimeout;
+      }
     } catch (error) {
-      console.error('Error fetching stations:', error);
-      return { stations: [], database_available: false };
+      // Don't log error - handled gracefully with fallback
+      return { 
+        stations: ['All Stations', 'Acre', 'Ashdod', 'Ashkelon', 'Eilat', 'Haifa', 'Yafo'], 
+        database_available: false 
+      };
     }
   }
 
@@ -156,8 +170,16 @@ class ApiService {
       if (params.show_anomalies) queryParams.append('show_anomalies', params.show_anomalies);
       if (params.limit) queryParams.append('limit', params.limit);
 
-      const data = await this.request(`/data?${queryParams}`);
-      return Array.isArray(data) ? data : [];
+      // Use longer timeout for data requests
+      const originalTimeout = this.timeout;
+      this.timeout = 120000; // 2 minutes for data
+      
+      try {
+        const data = await this.request(`/data?${queryParams}`);
+        return Array.isArray(data) ? data : [];
+      } finally {
+        this.timeout = originalTimeout;
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       return [];
@@ -172,7 +194,19 @@ class ApiService {
       if (params.model) queryParams.append('model', params.model);
       if (params.steps) queryParams.append('steps', params.steps);
 
-      return await this.request(`/predictions?${queryParams}`);
+      console.log('[API] Fetching predictions:', params);
+      
+      // Use longer timeout for predictions
+      const originalTimeout = this.timeout;
+      this.timeout = 120000; // 2 minutes for predictions
+      
+      try {
+        const result = await this.request(`/predictions?${queryParams}`);
+        console.log('[API] Predictions received:', Object.keys(result));
+        return result;
+      } finally {
+        this.timeout = originalTimeout;
+      }
     } catch (error) {
       console.error('Error fetching predictions:', error);
       return {};

@@ -20,7 +20,7 @@ import time
 import webbrowser
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 # Add shared modules to path
 current_dir = Path(__file__).parent
@@ -87,7 +87,8 @@ app.add_middleware(
         "http://localhost:3001",
         "http://127.0.0.1:3001",
         "http://sea-level-dash-local:3000",
-        "http://sea-level-dash-local:8001"
+        "http://sea-level-dash-local:8001",
+        "*"  # Allow all origins for development
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -605,6 +606,52 @@ async def get_sea_forecast():
         logger.error(f"Error in get_sea_forecast: {e}")
         return {"error": str(e), "locations": []}
 
+@app.get("/warnings")
+async def get_warnings():
+    """Get IMS sea warnings from RSS feed"""
+    try:
+        import xml.etree.ElementTree as ET
+        import requests
+        from datetime import datetime
+        
+        # Fetch RSS feed
+        response = requests.get(
+            "https://ims.gov.il/sites/default/files/ims_data/rss/alert/rssAlert_general_country_en.xml",
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        # Parse XML
+        root = ET.fromstring(response.content)
+        warnings = []
+        
+        for item in root.findall('.//item'):
+            title = item.find('title')
+            description = item.find('description') 
+            pub_date = item.find('pubDate')
+            
+            if title is not None:
+                warning = {
+                    'title': title.text or '',
+                    'description': description.text or '' if description is not None else '',
+                    'pubDate': pub_date.text or '' if pub_date is not None else ''
+                }
+                warnings.append(warning)
+        
+        return {
+            'warnings': warnings,
+            'count': len(warnings),
+            'fetched_at': datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching warnings: {e}")
+        return {
+            'warnings': [],
+            'count': 0,
+            'error': str(e)
+        }
+
 @app.get("/assets/{filename}")
 async def get_asset(filename: str):
     """Serve static assets like icons"""
@@ -699,7 +746,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Sea Level Monitoring Development Server")
     parser.add_argument("--host", default="sea-level-dash-local", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
+    parser.add_argument("--port", type=int, default=8001, help="Port to bind to")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
     parser.add_argument("--auto-frontend", action="store_true", help="Auto-start frontend server")
     parser.add_argument("--no-frontend", action="store_true", help="Don't check for frontend")

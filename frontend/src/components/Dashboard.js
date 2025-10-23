@@ -7,6 +7,7 @@ import ErrorBoundary from './ErrorBoundary';
 import DateRangePicker from './DateRangePicker';
 import CustomDropdown from './CustomDropdown';
 import StatsCard from './StatsCard';
+import WarningsCard from './WarningsCard';
 import { useFavorites } from '../hooks/useFavorites';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { formatDateTime, isValidDate } from '../utils/dateUtils';
@@ -50,7 +51,7 @@ function Dashboard() {
     anomalies: 0
   });
 
-  // Filter states - Modified with 3 days default
+  // Filter states - Modified with 1 day default
   const [filters, setFilters] = useState({
     startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     endDate: new Date(),
@@ -58,8 +59,8 @@ function Dashboard() {
     trendline: 'none',
     analysisType: 'none',
     showAnomalies: false,
-    predictionModels: [],
-    forecastHours: 72  // Changed default to 3 days
+    predictionModels: [], // No default prediction models
+    forecastHours: 24  // Changed default to 1 day
   });
 
   // Update current time every second
@@ -75,14 +76,18 @@ function Dashboard() {
   }, []);
 
   const fetchStations = async () => {
+    // Set fallback stations immediately to enable data fetching
+    const fallbackStations = ['All Stations', 'Acre', 'Ashdod', 'Ashkelon', 'Eilat', 'Haifa', 'Yafo'];
+    setStations(fallbackStations);
+    
     try {
-      setLoading(true);
       const data = await apiService.getStations();
-      setStations(data.stations || []);
+      if (data.stations && data.stations.length > 0) {
+        setStations(data.stations);
+      }
     } catch (error) {
       console.error('Error fetching stations:', error);
-    } finally {
-      setLoading(false);
+      // Keep fallback stations
     }
   };
 
@@ -179,17 +184,20 @@ function Dashboard() {
       // Support multiple stations
       const stationParam = Array.isArray(stations) ? stations.join(',') : stations;
       
-      const params = new URLSearchParams({
+      console.log('[Dashboard] Requesting predictions:', {
+        stations: stationParam,
+        models: modelParam,
+        steps: filters.forecastHours
+      });
+      
+      const data = await apiService.getPredictions({
         stations: stationParam,
         model: modelParam,
-        steps: filters.forecastHours.toString()
+        steps: filters.forecastHours
       });
-
-      const response = await fetch(`${API_BASE_URL}/predictions?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPredictions(data);
-      }
+      
+      console.log('[Dashboard] Predictions received:', Object.keys(data));
+      setPredictions(data);
     } catch (error) {
       console.error('Error fetching predictions:', error);
       setPredictions({});
@@ -317,24 +325,34 @@ function Dashboard() {
       let allData = [];
 
       if (stableSelectedStations.includes('All Stations')) {
-        const stationList = stations.filter(s => s !== 'All Stations');
-        
-        for (const station of stationList) {
-          const params = {
-            station: station,
-            start_date: new Date(filterValues.startDate).toISOString().split('T')[0],
-            end_date: new Date(filterValues.endDate).toISOString().split('T')[0],
-            data_source: filterValues.dataType,
-            show_anomalies: filterValues.showAnomalies.toString()
-          };
+        // Use single API call for all stations to reduce server load
+        const params = {
+          station: 'All Stations',
+          start_date: new Date(filterValues.startDate).toISOString().split('T')[0],
+          end_date: new Date(filterValues.endDate).toISOString().split('T')[0],
+          data_source: filterValues.dataType,
+          show_anomalies: filterValues.showAnomalies.toString()
+        };
 
-          try {
-            const data = await apiService.getData(params);
-            if (Array.isArray(data)) {
-              allData = allData.concat(data);
+        try {
+          const data = await apiService.getData(params);
+          if (Array.isArray(data)) {
+            allData = data;
+          }
+        } catch (err) {
+          console.error('Error fetching data for All Stations:', err);
+          // Fallback: try first 3 stations individually
+          const stationList = stations.filter(s => s !== 'All Stations').slice(0, 3);
+          for (const station of stationList) {
+            try {
+              const stationParams = { ...params, station };
+              const stationData = await apiService.getData(stationParams);
+              if (Array.isArray(stationData)) {
+                allData = allData.concat(stationData);
+              }
+            } catch (stationErr) {
+              console.error(`Error fetching data for ${station}:`, stationErr);
             }
-          } catch (err) {
-            console.error(`Error fetching data for ${station}:`, err);
           }
         }
       } else {
@@ -437,7 +455,7 @@ function Dashboard() {
     if (stations.length > 0 && selectedStations.length > 0) {
       const timeoutId = setTimeout(() => {
         fetchData();
-      }, 300);
+      }, 1000); // Increased delay to reduce server load
       
       return () => clearTimeout(timeoutId);
     }
@@ -450,10 +468,14 @@ function Dashboard() {
         !selectedStations.includes('All Stations')) {
       const stationsToPredict = selectedStations.filter(s => s !== 'All Stations').slice(0, 3);
       if (stationsToPredict.length > 0) {
+        console.log('[Dashboard] Fetching predictions for:', stationsToPredict, 'Models:', filters.predictionModels, 'Hours:', filters.forecastHours);
         fetchPredictions(stationsToPredict);
       }
+    } else {
+      console.log('[Dashboard] Clearing predictions - no valid stations or models');
+      setPredictions({});
     }
-  }, [filters.predictionModels, selectedStations, fetchPredictions]);
+  }, [filters.predictionModels, selectedStations, filters.forecastHours, fetchPredictions]);
 
   // Handle station selection (support multi-select up to 3)
   const handleStationChange = (value) => {
@@ -474,6 +496,7 @@ function Dashboard() {
 
   // Handle filter changes
   const handleFilterChange = (key, value) => {
+    console.log(`[Dashboard] Filter changed: ${key} = ${value}`);
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
@@ -874,7 +897,20 @@ function Dashboard() {
         {/* Header */}
         <div className="header">
           <h1 className="navbar-brand">
-            <img src="/assets/Mapi_Logo2.png" alt="Mapi Logo" style={{height: '40px', marginRight: '10px'}} />
+            <img 
+              src="/assets/Mapi_Logo2.png" 
+              alt="Survey of Israel Logo - Click to refresh" 
+              style={{
+                height: '40px', 
+                marginRight: '10px', 
+                cursor: 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+              onClick={() => window.location.reload()}
+              onMouseEnter={(e) => e.target.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.target.style.opacity = '1'}
+              title="Click to refresh dashboard"
+            />
             Sea Level Monitoring Dashboard
           </h1>
           <div id="current-time">{currentTime.toLocaleString()}</div>
@@ -979,12 +1015,17 @@ function Dashboard() {
                 <Form.Group className="mb-2">
                   <Form.Label className="small mb-1">Forecast Period</Form.Label>
                   <CustomDropdown
-                    value={filters.forecastHours}
-                    onChange={(value) => handleFilterChange('forecastHours', parseInt(value))}
+                    value={filters.forecastHours.toString()}
+                    onChange={(value) => {
+                      console.log('[Dashboard] Forecast period changed to:', value);
+                      handleFilterChange('forecastHours', parseInt(value));
+                    }}
                     options={[
                       { value: '24', label: '24H' },
                       { value: '48', label: '48H' },
-                      { value: '72', label: '72H' }
+                      { value: '72', label: '72H' },
+                      { value: '168', label: '7 Days' },
+                      { value: '240', label: '10 Days' }
                     ]}
                   />
                 </Form.Group>
@@ -1071,14 +1112,14 @@ function Dashboard() {
           <Col xs={12} lg={9} xl={10}>
             {/* Stats Cards */}
             <Row className="mb-3">
-              <Col md={3}>
+              <Col md={2}>
                 <StatsCard 
                   title="Current Level" 
                   value={stats.current_level.toFixed(3)} 
                   suffix="m" 
                 />
               </Col>
-              <Col md={3}>
+              <Col md={2}>
                 <StatsCard 
                   title="24h Change" 
                   value={`${stats['24h_change'] >= 0 ? '+' : ''}${stats['24h_change'].toFixed(3)}`} 
@@ -1086,18 +1127,21 @@ function Dashboard() {
                   color={stats['24h_change'] >= 0 ? 'green' : 'red'}
                 />
               </Col>
-              <Col md={3}>
+              <Col md={2}>
                 <StatsCard 
                   title="Avg. Temp" 
                   value={stats.avg_temp.toFixed(1)} 
                   suffix="°C" 
                 />
               </Col>
-              <Col md={3}>
+              <Col md={2}>
                 <StatsCard 
                   title="Anomalies" 
                   value={stats.anomalies} 
                 />
+              </Col>
+              <Col md={4}>
+                <WarningsCard apiBaseUrl={API_BASE_URL} />
               </Col>
             </Row>
 
@@ -1140,8 +1184,10 @@ function Dashboard() {
                       <div className="mt-2 text-center">
                         <small style={{ color: '#00ff00' }}>
                           Active Models: {filters.predictionModels.join(', ')} | 
+                          Period: {filters.forecastHours}h | 
                           Stations: {selectedStations.filter(s => s !== 'All Stations').length > 0 ? 
-                            selectedStations.filter(s => s !== 'All Stations').slice(0, 3).join(', ') : 'None'}
+                            selectedStations.filter(s => s !== 'All Stations').slice(0, 3).join(', ') : 'None'} |
+                          Predictions: {Object.keys(predictions).filter(k => k !== 'global_metadata').length}
                         </small>
                       </div>
                     )}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Badge, Spinner, Button } from 'react-bootstrap';
+import { translateWaveHeight, translateWind, getWaveHeightColor, getWindSpeedColor } from '../utils/imsCodeTranslations';
 
 const SeaForecastView = ({ apiBaseUrl }) => {
   const [forecastData, setForecastData] = useState(null);
@@ -46,19 +47,7 @@ const SeaForecastView = ({ apiBaseUrl }) => {
     });
   };
 
-  const getWaveHeightColor = (waveHeight) => {
-    const height = parseInt(waveHeight.split(' / ')[0]);
-    if (height >= 50) return 'danger';
-    if (height >= 30) return 'warning';
-    return 'success';
-  };
-
-  const getWindSpeedColor = (windSpeed) => {
-    const speed = parseInt(windSpeed.split('/')[1]?.split('-')[1] || '0');
-    if (speed >= 25) return 'danger';
-    if (speed >= 15) return 'warning';
-    return 'success';
-  };
+  // Use imported color functions from imsCodeTranslations
 
   if (loading) {
     return (
@@ -143,7 +132,7 @@ const SeaForecastView = ({ apiBaseUrl }) => {
                         <div className="d-flex justify-content-between align-items-center">
                           <span className="small">Wave Height:</span>
                           <Badge bg={getWaveHeightColor(forecast.elements.wave_height)}>
-                            {forecast.elements.wave_height}
+                            {translateWaveHeight(forecast.elements.wave_height)}
                           </Badge>
                         </div>
                       </Col>
@@ -161,7 +150,7 @@ const SeaForecastView = ({ apiBaseUrl }) => {
                         <div className="d-flex justify-content-between align-items-center">
                           <span className="small">Wind:</span>
                           <Badge bg={getWindSpeedColor(forecast.elements.wind)}>
-                            {forecast.elements.wind}
+                            {translateWind(forecast.elements.wind)}
                           </Badge>
                         </div>
                       </Col>

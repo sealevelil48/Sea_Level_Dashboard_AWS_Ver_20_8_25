@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IMS Code Translation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-case { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .badge { padding: 4px 8px; border-radius: 4px; color: white; font-weight: bold; }
+        .badge-secondary { background-color: #6c757d; }
+        .badge-warning { background-color: #ffc107; color: black; }
+        .badge-danger { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>IMS Code Translation Test</h1>
+    
+    <div class="test-case">
+        <h3>Wave Height Examples:</h3>
+        <p>Input: "50 / 50-100" → Output: <span class="badge badge-warning">Slight (50-100 cm)</span></p>
+        <p>Input: "80 / 200-300" → Output: <span class="badge badge-danger">Very Rough (200-300 cm)</span></p>
+        <p>Input: "30 / 10-50" → Output: <span class="badge badge-secondary">Slight (10-50 cm)</span></p>
+    </div>
+    
+    <div class="test-case">
+        <h3>Wind Examples:</h3>
+        <p>Input: "045-135/10-25" → Output: <span class="badge badge-secondary">NE-SE (10-25 km/h)</span></p>
+        <p>Input: "180/30-40" → Output: <span class="badge badge-warning">S (30-40 km/h)</span></p>
+        <p>Input: "270/45-60" → Output: <span class="badge badge-danger">W (45-60 km/h)</span></p>
+    </div>
+    
+    <div class="test-case">
+        <h3>Color Coding Legend:</h3>
+        <p><span class="badge badge-secondary">Grey</span> - No significant weather (codes <40, wind <15 km/h)</p>
+        <p><span class="badge badge-warning">Yellow</span> - Risk (codes 40-59, wind 15-24 km/h)</p>
+        <p><span class="badge badge-warning">Orange</span> - Significant Risk (codes 60-79, wind 25-39 km/h)</p>
+        <p><span class="badge badge-danger">Red</span> - Severe Risk (codes 80+, wind 40+ km/h)</p>
+    </div>
+</body>
+</html>

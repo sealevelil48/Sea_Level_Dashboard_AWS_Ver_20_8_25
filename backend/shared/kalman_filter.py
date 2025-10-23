@@ -304,7 +304,7 @@ class KalmanFilterSeaLevel:
     
     def to_json(self, forecast_df: pd.DataFrame) -> List[Dict]:
         """Convert forecast DataFrame to JSON-serializable format using vectorized operations"""
-        # Use vectorized operations instead of iterrows for better performance
+        # Use iterrows instead of itertuples to avoid unpacking issues
         return [
             {
                 'ds': idx.isoformat() if hasattr(idx, 'isoformat') else str(idx),
@@ -312,7 +312,7 @@ class KalmanFilterSeaLevel:
                 'yhat_lower': float(row.get('yhat_lower', row['yhat'])),
                 'yhat_upper': float(row.get('yhat_upper', row['yhat']))
             }
-            for idx, row in forecast_df.itertuples()
+            for idx, row in forecast_df.iterrows()
         ]
 
 
