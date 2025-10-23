@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Badge, Spinner, Button } from 'react-bootstrap';
-import { translateWaveHeight, translateWind, getWaveHeightColor, getWindSpeedColor } from '../utils/imsCodeTranslations';
+import { translateWaveHeight, translateWind, getWaveHeightColor, getWindSpeedColor } from '../utils/imsCodeTranslations.js';
 
 const SeaForecastView = ({ apiBaseUrl }) => {
   const [forecastData, setForecastData] = useState(null);
